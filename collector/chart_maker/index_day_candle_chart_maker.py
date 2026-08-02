@@ -1,0 +1,319 @@
+from pathlib import Path
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+from matplotlib.patches import Rectangle
+from matplotlib.patches import Polygon
+from matplotlib.transforms import blended_transform_factory
+from matplotlib.ticker import FuncFormatter
+
+def index_day_candle_chart_maker(index_df):
+    index_df = index_df.reset_index(drop=True)          # index_df index 초기화 작업(오류 방지)
+
+    #-----------------------------------------------------
+    # chart 사이즈 설정
+    #-----------------------------------------------------
+    fig, ax = plt.subplots(figsize=(16, 9))
+    x = np.arange(len(index_df))
+
+    #-----------------------------------------------------
+    # 축 설정
+    #-----------------------------------------------------
+    # 테두리 제거
+    ax.spines["top"].set_visible(False)
+    ax.spines["bottom"].set_visible(False)
+    ax.spines["right"].set_visible(False)
+    ax.spines["left"].set_visible(False)
+    
+    # y축을 오른쪽으로 이동
+    ax.yaxis.tick_right()
+    ax.yaxis.set_label_position("right")
+
+    ax.tick_params(
+        axis="x",
+        bottom=False,      # 아래쪽 눈금 표시
+        labelbottom=True, # 아래쪽 라벨 표시
+        top=False,        # 위쪽 눈금 숨김
+        labeltop=False    # 위쪽 라벨 숨김
+    )
+    
+    ax.tick_params(
+        axis="y",
+        left=False,
+        labelleft=False,
+        right=False,
+        labelright=True
+    )
+    
+    # 양 옆 여백 조금 주기
+    ax.set_xlim(-1, len(index_df) - 0.5)
+    
+    # 위 아래 여백 조금 주기
+    price_min = index_df["low"].min()
+    price_max = index_df["high"].max()
+    
+    margin = (price_max - price_min) * 0.05
+    
+    
+    ax.set_ylim(
+        price_min - margin,
+        price_max + margin*2.5
+    )
+
+    ax.yaxis.set_major_formatter(
+        FuncFormatter(lambda x, pos: f"{int(x):,}")
+    )
+
+    # x축에 평행한 선 그리기
+    ax.grid(
+        axis="y",
+        color="gray",
+        alpha=0.15,
+        linewidth=0.8
+    )
+
+    #-----------------------------------------------------
+    # 캔들차트 생성
+    #-----------------------------------------------------
+    # 최고가 / 최저가
+    high_idx = index_df["high"].idxmax()
+    low_idx = index_df["low"].idxmin()
+    
+    high_price = index_df.loc[high_idx, "high"]
+    low_price = index_df.loc[low_idx, "low"]
+
+    non_move_plan_b = (high_price - low_price)*0.002
+
+
+    for i, row in index_df.iterrows():
+        open_price = row["open"]
+        high_price = row["high"]
+        low_price = row["low"]
+        close_price = row["close"]
+    
+        # 상승 / 하락 색상
+        color = "#e53935" if close_price > open_price else "#1565c0" if close_price < open_price else "#000000"
+    
+        # 심지
+        ax.vlines(
+            x=i,
+            ymin=low_price,
+            ymax=high_price,
+            color=color,
+            linewidth=0.9
+        )
+    
+        # 몸통
+        body_bottom = min(open_price, close_price)
+        body_height = abs(close_price - open_price)
+    
+        # 시가 = 종가인 경우도 보이도록
+        if body_height == 0:
+            body_height = non_move_plan_b
+
+        candle_width = 0.75
+        rect = Rectangle(
+            (i - candle_width / 2, body_bottom),
+            candle_width,
+            body_height,
+            facecolor=color,
+            edgecolor="none"     # ← 테두리 완전 제거
+        )
+    
+        ax.add_patch(rect)
+
+    #-----------------------------------------------------
+    # 이동평균선
+    #-----------------------------------------------------
+    index_df["MA5"] = index_df["close"].rolling(5).mean()
+    index_df["MA20"] = index_df["close"].rolling(20).mean()
+    index_df["MA60"] = index_df["close"].rolling(60).mean()
+    index_df["MA120"] = index_df["close"].rolling(120).mean()
+    
+    ax.plot(x, index_df["MA5"], color="green", linewidth=1.2, label="5")
+    ax.plot(x, index_df["MA20"], color="red", linewidth=1.2, label="20")
+    ax.plot(x, index_df["MA60"], color="orange", linewidth=1.2, label="60")
+    ax.plot(x, index_df["MA120"], color="purple", linewidth=1.2, label="120")
+    
+    ax.text(0.01, 0.98, "MA", transform=ax.transAxes,
+        va="top", fontsize=10, color="black")
+    ax.text(0.04, 0.98, "5", transform=ax.transAxes,
+        va="top", fontsize=10, color="green")
+    ax.text(0.055, 0.98, "20", transform=ax.transAxes,
+        va="top", fontsize=10, color="red")
+    ax.text(0.075, 0.98, "60", transform=ax.transAxes,
+        va="top", fontsize=10, color="orange")
+    ax.text(0.095, 0.98, "120", transform=ax.transAxes,
+        va="top", fontsize=10, color="purple")
+
+    #-----------------------------------------------------
+    # 날짜 표시 (개선된 동적 간격 로직)
+    #-----------------------------------------------------
+    total_len = len(index_df)
+    
+    # 1. 화면에 표시할 최대 라벨 개수 설정 (16:9 비율 기준 15~20개가 적당함)
+    max_labels = 12
+    step = max(1, total_len // max_labels)
+    
+    # 2. 데이터 기간(날짜) 차이에 따라 포맷 자동 지정
+    date_range_days = (index_df["date"].max() - index_df["date"].min()).days
+    
+    if date_range_days > 1500:        # 3년 초과 -> 연도만
+        date_format = "%Y"
+    elif date_range_days > 900:           # 3개월 초과 -> 연-월
+        date_format = "%Y-%m"
+    else:                                # 3개월 이하 -> 월-일
+        date_format = "%m-%d"
+
+    # 3. 일정 간격(step)으로 인덱스 추출
+    tick_positions = list(range(0, total_len, step))
+    tick_labels = [index_df.loc[i, "date"].strftime(date_format) for i in tick_positions]
+
+    # 4. 축 적용
+    ax.set_xticks(tick_positions)
+    ax.set_xticklabels(
+        tick_labels,
+        rotation=0,
+        fontsize=9,
+        ha="center"
+    )
+
+    #-----------------------------------------------------
+    # 최고가 최저가 표시
+    #-----------------------------------------------------
+    # 최고가 / 최저가
+    high_idx = index_df["high"].idxmax()
+    low_idx = index_df["low"].idxmin()
+    
+    high_price = index_df.loc[high_idx, "high"]
+    low_price = index_df.loc[low_idx, "low"]
+    x_offset = len(x) * 0.007
+    y_offset = (price_max - price_min) * 0.02
+
+    
+    # 최고가 표시
+    ax.plot(
+        high_idx,                            # x 좌표
+        high_price + y_offset,                 # y 좌표
+        marker="v",                          # ▼ 표시
+        color="gray",
+        markersize = 5
+    )
+
+    if len(x)*0.5 < high_idx:
+        x_cord = high_idx - x_offset
+        ha = "right"
+    else:
+        x_cord = high_idx + x_offset
+        ha = "left"
+        
+    ax.text(
+        x_cord,                              # x 좌표
+        high_price + y_offset,               # ▼와 같은 높이
+        f"High Price {high_price:,}",
+        va = "center",
+        ha = ha,
+        fontsize = 8,
+        color="gray"
+    )
+    
+    # 최저가 표시
+    ax.plot(
+        low_idx,
+        low_price - y_offset,
+        marker="^",                          # ▲ 표시
+        color="gray",
+        markersize = 5
+    )
+
+    if low_idx < len(x)*0.5:
+        x_cord = low_idx + x_offset
+        ha = "left"
+    else:
+        x_cord = low_idx - x_offset
+        ha = "right"
+
+
+    ax.text(
+        x_cord,                       # x 좌표
+        low_price - y_offset,           # ▲와 같은 높이
+        f"Low Price {low_price:,}",
+        va = "center",
+        ha = ha,
+        fontsize = 8,
+        color="gray"
+    )
+
+    #-----------------------------------------------------
+    # 현재가 표시
+    #-----------------------------------------------------
+    last_close = index_df.iloc[-2]["close"]
+    current_close = index_df.iloc[-1]["close"]
+    
+    # 당일 상승/하락에 따라 색상 결정
+    current_color = "#e53935" if current_close >= last_close else "#1565c0"
+
+    transform = blended_transform_factory(
+        ax.transAxes,   # x는 축 좌표
+        ax.transData    # y는 데이터 좌표
+    )
+
+    triangle_height = (price_max - price_min) * 0.014
+    triangle = Polygon(
+        [
+            [0.9998, current_close],
+            [1.006, current_close + triangle_height],
+            [1.006, current_close - triangle_height]
+        ],
+        closed=True,
+        facecolor=current_color,
+        edgecolor="none",
+        transform=transform,
+        clip_on=False
+    )
+
+    ax.add_patch(triangle)
+
+    ax.text(
+        1.0075,                 # 축의 오른쪽 바깥 0.75%
+        current_close,             # 실제 현재가
+        f"{current_close:,}",
+        transform=transform,
+        ha="left",
+        va="center",
+        fontsize=9,
+        color="white",
+        bbox=dict(
+            boxstyle="round,pad=0.3",
+            fc=current_color,
+            ec="none"
+        )
+    )
+    
+    #-----------------------------------------------------
+    # 저장
+    #-----------------------------------------------------
+    plt.tight_layout()
+
+    code_trans = {
+        "KOSPI": "KOSPI",
+        "KOSDAQ": "KOSDAQ",
+        "KPI200": "KOSPI_200",
+        ".IXIC": "NASDAQ",
+        ".INX": "S&P_500",
+        ".DJI": "Dow_Jones",
+        ".VIX": "VIX"
+    }
+    
+    name = code_trans[index_df.iloc[0]["code"]]
+    day = index_df.iloc[1]["day"]
+
+    title = f"data/image/market_index/{name}_{day}days_day_candle_chart.png"
+
+    plt.savefig(
+        title,
+        dpi=300,
+        bbox_inches="tight"
+    )
+
+    plt.close(fig)
