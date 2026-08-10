@@ -27,9 +27,18 @@ for day in [90, 365, 365*5]:
     
         name_data = page["properties"]["종목"]["title"]
         name = name_data[0]["text"]["content"]
-    
-        domestic_stock_chart_maker(domestic_stock_data_reader(day, ticker), name)
-        domestic_stock_day_candle_chart_maker(domestic_stock_data_reader(day, ticker), name)
+
+        price_name = {
+            "KRX 금현물": "KRX_Gold"
+        }
+        
+        if name in ["KRX 금현물"]:
+            name = price_name[name]
+            price_chart_maker(price_data_reader(day, name))              
+
+        else:
+            domestic_stock_chart_maker(domestic_stock_data_reader(day, ticker), name)
+            domestic_stock_day_candle_chart_maker(domestic_stock_data_reader(day, ticker), name)          
 
 
 index_chart_maker(index_data_reader(365*5, "KOSPI"))
