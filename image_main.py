@@ -15,7 +15,7 @@ from collector.chart_maker.double_price_data_chart_maker import double_price_dat
 from notion.get_all_pages import get_all_pages
 from notion.config import NOTION_DOMESTIC_STOCK_INFO_DB_ID
 
-for day in [90, 365, 365*3, 365*5, 365*10]:
+for day in [90, 365, 365*5]:
     for page in get_all_pages(NOTION_DOMESTIC_STOCK_INFO_DB_ID):
     
         ticker_data = page["properties"]["티커"]["rich_text"]
@@ -30,17 +30,9 @@ for day in [90, 365, 365*3, 365*5, 365*10]:
     
         domestic_stock_chart_maker(domestic_stock_data_reader(day, ticker), name)
         domestic_stock_day_candle_chart_maker(domestic_stock_data_reader(day, ticker), name)
-    
-    for index in ["KOSPI", "KOSDAQ", "KOSPI_200", "NASDAQ", "S&P_500", "Dow_Jones", "VIX"]:
-        index_chart_maker(index_data_reader(day, index))
-        index_day_candle_chart_maker(index_data_reader(day, index))
 
-    for price_1 in ["US2Y", "US10Y", "US30Y", "KR3Y", "KR10Y", "KR30Y", "USD-KRW", "Dolar_Index", "USD-JPY", "USD-EUR", "KRX_Gold", "International_Gold", "Silver", "WTI_Crude_Oil", "Brent_Crude_Oil", "Natural_Gas", "Copper"]:
-        price_chart_maker(price_data_reader(day, price_1))
-        for price_2 in ["US2Y", "US10Y", "US30Y", "KR3Y", "KR10Y", "KR30Y", "USD-KRW", "Dolar_Index", "USD-JPY", "USD-EUR", "KRX_Gold", "International_Gold", "Silver", "WTI_Crude_Oil", "Brent_Crude_Oil", "Natural_Gas", "Copper"]:
-            if price_1 == price_2: continue
 
-            double_price_data_chart_maker(double_price_data_reader(day, price_1, price_2))
+index_chart_maker(index_data_reader(365*5, "KOSPI"))
+index_day_candle_chart_maker(index_data_reader(365*5, "KOSPI"))
 
-    for standard_interest in ["Korea_Rate", "Fed_Rate"]:
-        standard_interest_chart_maker(standard_interest_data_reader(day, standard_interest))
+double_price_data_chart_maker(double_price_data_reader(365*5, "International_Gold", "Dolar_Index"))
