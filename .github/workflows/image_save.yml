@@ -2,6 +2,8 @@ name: Image Production
 
 on:
   workflow_dispatch:
+  schedule:
+  - cron: '0 * * * *'
 
 concurrency:
   group: repository-write
