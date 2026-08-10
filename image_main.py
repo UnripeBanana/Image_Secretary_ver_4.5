@@ -40,6 +40,7 @@ for day in [90, 365, 365*5]:
             domestic_stock_chart_maker(domestic_stock_data_reader(day, ticker), name)
             domestic_stock_day_candle_chart_maker(domestic_stock_data_reader(day, ticker), name)          
 
+price_chart_maker(price_data_reader(365*5, "USD-KRW"))
 
 index_chart_maker(index_data_reader(365*5, "KOSPI"))
 index_day_candle_chart_maker(index_data_reader(365*5, "KOSPI"))
