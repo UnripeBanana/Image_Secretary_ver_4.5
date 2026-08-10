@@ -8,7 +8,7 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  save-history:
+  Image_Production:
     runs-on: ubuntu-latest
     
     permissions:
@@ -31,7 +31,7 @@ jobs:
         run: python3 image_main.py
         env:
           NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}
-          NOTION_DOMESTIC_STOCK_INFO_DB_ID: ${{ secrets.NOTION_INFO_DB_ID }}
+          NOTION_INFO_DB_ID: ${{ secrets.NOTION_INFO_DB_ID }}
 
       - name: Commit and Push Image
         run: |
