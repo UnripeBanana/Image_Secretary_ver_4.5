@@ -13,10 +13,10 @@ from collector.chart_maker.standard_interest_chart_maker import standard_interes
 from collector.chart_maker.double_price_data_chart_maker import double_price_data_chart_maker
 
 from notion.get_all_pages import get_all_pages
-from notion.config import NOTION_DOMESTIC_STOCK_INFO_DB_ID
+from notion.config import NOTION_INFO_DB_ID
 
 for day in [90, 365, 365*5]:
-    for page in get_all_pages(NOTION_DOMESTIC_STOCK_INFO_DB_ID):
+    for page in get_all_pages(NOTION_INFO_DB_ID):
     
         ticker_data = page["properties"]["티커"]["rich_text"]
     
